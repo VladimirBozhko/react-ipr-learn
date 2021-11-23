@@ -1,11 +1,11 @@
 import 'bootstrap/dist/css/bootstrap.min.css';
-import React, {ChangeEventHandler} from 'react';
+import React from 'react';
 import {useDayOff} from "./hooks/use-day-off";
-import {formatDate} from "./helpers/format-date";
 import {useWeatherForecast} from "./hooks/use-weather-forecast";
-import {getGeolocation} from "./helpers/get-geolocation";
+import {getGeolocation} from "./utils/get-geolocation";
 import {Location} from "./models/location";
-import {compareDates} from "./helpers/compare-dates";
+import {compareDates} from "./utils/compare-dates";
+import {AppForm, AppFormFields} from "./components/app-form";
 
 function App() {
   const [date, setDate] = React.useState<Date>();
@@ -15,8 +15,7 @@ function App() {
   const dayOff = useDayOff(date);
   const weatherForecast = useWeatherForecast(position);
 
-  const handleChange: ChangeEventHandler<HTMLInputElement> = (event) => {
-    const date = new Date(event.target.value);
+  const handleSubmit = ({date}: AppFormFields) => {
     setDate(date);
 
     getGeolocation()
@@ -27,13 +26,14 @@ function App() {
       .catch(error => setError(error));
   }
 
-  const value = date ? formatDate(date) : '';
-  const forecast = (date && weatherForecast) ? weatherForecast.find(x => compareDates(x.date, date)) : '';
+  const forecast = (date && weatherForecast)
+    ? weatherForecast.find(x => compareDates(x.date, date))
+    : undefined;
 
   return (
-    <div className="m-2 row align-items-center">
-      <div className="col-auto">
-        <input className="form-control" type="date" onChange={handleChange} value={value}/>
+    <div className="row align-items-center">
+      <div className="col-3">
+        <AppForm onSubmit={handleSubmit} />
       </div>
       {date && <div className="col-1">{dayOff ? 'Day off' : 'Not day off'}</div>}
       {forecast && <div className="col-1">{forecast.weathercode}</div>}

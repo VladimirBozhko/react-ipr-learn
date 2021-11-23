@@ -1,5 +1,5 @@
 import React from "react";
-import {formatDate} from "../helpers/format-date";
+import {formatDate} from "../utils/format-date";
 
 export function useDayOff(date?: Date) {
   const [result, setResult] = React.useState(false);
