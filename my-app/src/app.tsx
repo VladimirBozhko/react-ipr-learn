@@ -1,22 +1,25 @@
 import 'bootstrap/dist/css/bootstrap.min.css';
 import React from 'react';
-import {useDayOff} from "./hooks/use-day-off";
+import {useDaysOff} from "./hooks/use-days-off";
 import {useWeatherForecast} from "./hooks/use-weather-forecast";
 import {getGeolocation} from "./utils/get-geolocation";
 import {Location} from "./models/location";
 import {compareDates} from "./utils/compare-dates";
 import {AppForm, AppFormFields} from "./components/app-form";
+import {AppResults} from "./components/app-results";
+import {DateRange} from "./models/date-range";
+import {eachDayOfInterval} from "date-fns";
 
 function App() {
-  const [date, setDate] = React.useState<Date>();
+  const [dateRange, setDateRange] = React.useState<DateRange>();
   const [position, setPosition] = React.useState<Location>();
   const [error, setError] = React.useState<any>();
 
-  const dayOff = useDayOff(date);
+  const daysOff = useDaysOff(dateRange);
   const weatherForecast = useWeatherForecast(position);
 
-  const handleSubmit = ({date}: AppFormFields) => {
-    setDate(date);
+  const handleSubmit = ({dateRange}: AppFormFields) => {
+    setDateRange(dateRange);
 
     getGeolocation()
       .then(geolocation => {
@@ -26,17 +29,25 @@ function App() {
       .catch(error => setError(error));
   }
 
-  const forecast = (date && weatherForecast)
-    ? weatherForecast.find(x => compareDates(x.date, date))
-    : undefined;
+  const results = (dateRange && daysOff && weatherForecast) &&
+    eachDayOfInterval(dateRange).map((date, index) => {
+      return {
+        date: date,
+        isDayOff: daysOff[index],
+        weathercode: weatherForecast.find(x => compareDates(x.date, date))?.weathercode
+      };
+    });
 
   return (
-    <div className="row align-items-center">
+    <div className="row">
       <div className="col-3">
-        <AppForm onSubmit={handleSubmit} />
+        <AppForm onSubmit={handleSubmit}/>
       </div>
-      {date && <div className="col-1">{dayOff ? 'Day off' : 'Not day off'}</div>}
-      {forecast && <div className="col-1">{forecast.weathercode}</div>}
+      {results && (
+        <div className="col-4">
+          <AppResults results={results}/>
+        </div>
+      )}
       {error && <div className="col-1">Unable to determine user location</div>}
     </div>
   );
