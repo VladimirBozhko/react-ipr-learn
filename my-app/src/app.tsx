@@ -9,6 +9,7 @@ import {AppForm, AppFormFields} from "./components/app-form";
 import {AppResults} from "./components/app-results";
 import {DateRange} from "./models/date-range";
 import {eachDayOfInterval} from "date-fns";
+import {AppMap} from "./components/app-map";
 
 function App() {
   const [dateRange, setDateRange] = React.useState<DateRange>();
@@ -39,16 +40,26 @@ function App() {
     });
 
   return (
-    <div className="row">
-      <div className="col-3">
-        <AppForm onSubmit={handleSubmit}/>
+    <div className="m-2">
+      <div className="row">
+        <div className="col-2">
+          <AppForm onSubmit={handleSubmit}/>
+        </div>
+        {results && (
+          <div className="col-4">
+            <AppResults results={results}/>
+          </div>
+        )}
+        {error && <div className="col">Unable to determine user location</div>}
       </div>
-      {results && (
-        <div className="col-4">
-          <AppResults results={results}/>
+      {position && (
+        <div className="row">
+          <div className="col-4">
+            <AppMap center={position} zoom={6} markersCount={5} onMarkerSet={() => {
+            }}/>
+          </div>
         </div>
       )}
-      {error && <div className="col-1">Unable to determine user location</div>}
     </div>
   );
 }
