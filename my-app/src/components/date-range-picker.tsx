@@ -28,7 +28,7 @@ export function DateRangePicker({onChange}: DateRangePickerProps) {
   const endValue = end ? formatDate(end) : '';
 
   return (
-    <div>
+    <>
       <div>
         <label>Start</label>
         <input
@@ -47,6 +47,6 @@ export function DateRangePicker({onChange}: DateRangePickerProps) {
           value={endValue}
         />
       </div>
-    </div>
+    </>
   );
 }

@@ -7,7 +7,8 @@ import TileLayer from "ol/layer/Tile";
 import VectorLayer from "ol/layer/Vector";
 import {Icon, Style} from "ol/style";
 import {fromLonLat, transform} from "ol/proj";
-import {Point} from "ol/geom";
+import {Geometry, Point} from "ol/geom";
+import BaseEvent from "ol/events/Event";
 
 export type AppMapProps = {
   center: Location;
@@ -16,31 +17,45 @@ export type AppMapProps = {
   onMarkerSet: (markers: Location[]) => void;
 }
 
-export function AppMap({center, zoom, onMarkerSet, markersCount}: AppMapProps) {
+export function AppMap({center, zoom, markersCount, onMarkerSet}: AppMapProps) {
   const mapRef = React.useRef<HTMLDivElement>(null);
   const [map, setMap] = React.useState<ol.Map>();
-  const [markers, setMarkers] = React.useState<Location[]>([]);
+  const [markersLayer, setMarkersLayer] = React.useState<VectorLayer<VectorSource<Geometry>>>();
+  const [markers, setMarkers] = React.useState<Location[]>([center]);
 
   // init map
   React.useEffect(() => {
     if (!mapRef.current) return;
 
+    const mapLayer = new TileLayer({source: new OSM()});
+    const markersLayer = new VectorLayer({
+      source: new VectorSource(),
+      style: new Style({image: new Icon({src: 'marker.svg'})})
+    });
+
     const map = new ol.Map({
       view: new ol.View(),
       target: mapRef.current,
-      layers: [
-        new TileLayer({source: new OSM()}),
-        new VectorLayer({
-          source: new VectorSource(),
-          style: new Style({image: new Icon({src: 'marker.svg'})})
-        })
-      ]
+      layers: [mapLayer, markersLayer]
     });
 
     setMap(map);
+    setMarkersLayer(markersLayer);
 
     return () => map.setTarget(undefined);
   }, []);
+
+  React.useEffect(() => {
+    const handleClick = (event: ol.MapBrowserEvent<any>) => {
+      const [lon, lat] = transform(event.coordinate, 'EPSG:3857', 'EPSG:4326');
+      const result = markers.length < markersCount ? [...markers, {lon, lat}] : markers;
+      setMarkers(result);
+      onMarkerSet(result);
+    }
+    map?.on('click', handleClick);
+
+    return () => map?.removeEventListener('click', handleClick as ((event: Event | BaseEvent) => void));
+  }, [map, markers, markersCount, onMarkerSet])
 
   // set center
   React.useEffect(() => map?.getView()?.setCenter(fromLonLat([center.lon, center.lat])), [map, center]);
@@ -48,31 +63,15 @@ export function AppMap({center, zoom, onMarkerSet, markersCount}: AppMapProps) {
   // set zoom
   React.useEffect(() => map?.getView()?.setZoom(zoom), [map, zoom]);
 
-  const setMarker = React.useCallback((marker: Location) => {
-    if (markers?.length >= markersCount) return;
-
-    const markersLayer = map?.getLayers()?.item(1);
-    if (!(markersLayer instanceof VectorLayer)) return;
-
-    const markerFeature = new ol.Feature(new Point(fromLonLat([marker.lon, marker.lat])));
-    markersLayer.getSource().addFeature(markerFeature);
-
-    const newMarkers = [...markers, marker];
-    setMarkers(newMarkers);
-    onMarkerSet(newMarkers);
-  }, [map, markers, markersCount, onMarkerSet]);
-
-  // keep subscription to map click event
+  // draw markers
   React.useEffect(() => {
-    const handleOnClick = (event: ol.MapBrowserEvent<any>) => {
-      const [lon, lat] = transform(event.coordinate, 'EPSG:3857', 'EPSG:4326');
-      setMarker({lon, lat});
-    };
+    const layer = markersLayer?.getSource();
+    layer?.clear();
+    markers.forEach(({lon, lat}) => layer?.addFeature(new ol.Feature(new Point(fromLonLat([lon, lat])))));
+  }, [markers, markersLayer]);
 
-    map?.on('click', handleOnClick);
-    // @ts-ignore
-    return () => map?.removeEventListener('click', handleOnClick);
-  }, [map, setMarker]);
+  // clear markers
+  React.useEffect(() => setMarkers([center]), [center, markersCount]);
 
-  return <div style={{height: '500px'}} ref={mapRef}>Map</div>;
+  return <div style={{height: '500px', padding: '25px'}} ref={mapRef}>Map</div>;
 }

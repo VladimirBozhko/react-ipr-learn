@@ -1,14 +1,12 @@
 import React from "react";
 import {formatDate} from "../utils/format-date";
-import {DateRange} from "../models/date-range";
-import {eachDayOfInterval} from "date-fns";
 
-export function useDaysOff(dateRange?: DateRange) {
+export function useDaysOff(dates?: Date[]) {
   const [results, setResults] = React.useState<boolean[]>();
 
   const fetchData = React.useCallback(() => {
-    if (dateRange) {
-      const requests = eachDayOfInterval(dateRange).map((date) => {
+    if (dates?.length) {
+      const requests = dates.map((date) => {
         const endpoint = `https://isdayoff.ru/${formatDate(date)}`;
         return fetch(endpoint, {window: null})
           .then(response => response.json())
@@ -17,7 +15,7 @@ export function useDaysOff(dateRange?: DateRange) {
 
       Promise.all(requests).then(results => setResults(results));
     }
-  }, [dateRange])
+  }, [dates])
 
   React.useEffect(fetchData, [fetchData]);
 
