@@ -16,13 +16,12 @@ function App() {
   const weatherForecast = useWeatherForecast(markers);
 
   const handleSubmit = ({dateRange, markers}: AppFormFields) => {
-    const dates = eachDayOfInterval(dateRange).slice(0, markers.length);
-
-    setDates(dates);
-    setMarkers(markers)
+    setDates(eachDayOfInterval(dateRange));
+    setMarkers(markers);
   }
 
-  const results = (markers && dates && daysOff && weatherForecast) &&
+
+  const results = (markers?.length && dates?.length && daysOff?.length && weatherForecast?.length) &&
     markers.map((location, index) => {
       const date = dates[index];
       const isDayOff = daysOff[index];

@@ -17,9 +17,9 @@ type AppFormProps = {
 }
 
 export function AppForm({onSubmit}: AppFormProps) {
-  const {handleSubmit, control, watch, formState: {errors}} = useForm<AppFormFields>();
+  const {handleSubmit, control, watch, resetField, formState: {errors}} = useForm<AppFormFields>();
 
-  const [dates, setDates] = React.useState<Date[]>();
+  const [interval, setInterval] = React.useState<number>();
   const [location, setLocation] = React.useState<Location>();
   const [geolocationError, setGeolocationError] = React.useState<any>();
 
@@ -35,19 +35,23 @@ export function AppForm({onSubmit}: AppFormProps) {
         const end = dateRange?.end;
 
         if (start && end && validateDateRange(dateRange)) {
-          setDates(eachDayOfInterval({start, end}));
-          getGeolocation().then(geolocation => {
-            const {latitude, longitude} = geolocation.coords;
-            setLocation({lat: latitude, lon: longitude});
-          })
-            .catch(error => setGeolocationError(error));
+          const interval = eachDayOfInterval({start, end}).length;
+          setInterval(interval);
+
+          if (location) {
+            resetField('markers', {defaultValue: [location]});
+          } else {
+            getGeolocation()
+              .then(({coords: {latitude, longitude}}) => setLocation({lat: latitude, lon: longitude}))
+              .catch(error => setGeolocationError(error));
+          }
         } else {
-          setDates(undefined);
+          setInterval(undefined);
         }
       }
     });
     return () => subscription.unsubscribe();
-  }, [watch, validateDateRange])
+  }, [watch, resetField,  validateDateRange, location])
 
   return (
     <form className="m-2 " onSubmit={handleSubmit(onSubmit)}>
@@ -60,14 +64,8 @@ export function AppForm({onSubmit}: AppFormProps) {
         render={({field: {onChange}}) =>
           <DateRangePicker onChange={onChange}/>}
       />
-      {(location && dates?.length) && (
-        <AppMapControl
-          center={location}
-          zoom={6}
-          markersCount={dates.length}
-          name="markers"
-          control={control}
-        />
+      {(location && interval) && (
+        <AppMapControl center={location} zoom={6} max={interval} name="markers" control={control}/>
       )}
       <input className="btn btn-primary mt-2" type="submit" value="Submit"/>
     </form>
