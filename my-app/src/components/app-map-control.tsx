@@ -7,12 +7,13 @@ import {AppFormFields} from "./app-form";
 
 type AppMapControlProps = {
   center: Location;
+  markers: Location[];
   zoom: number;
   max: number;
 } & UseControllerProps<AppFormFields, 'markers'>;
 
-export function AppMapControl({center, zoom, max, control, name}: AppMapControlProps) {
-  const {field: {onChange, value}} = useController({name, control, defaultValue: [center]});
+export function AppMapControl({center, markers, zoom, max, control, name}: AppMapControlProps) {
+  const {field: {onChange, value}} = useController({name, control, defaultValue: markers});
 
   const handleMarkersChange = (markers: Location[]) => {
     if (markers.length <= max) {

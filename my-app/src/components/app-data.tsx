@@ -1,18 +1,13 @@
 import {formatDate} from "../utils/format-date";
-import {Location} from "../models/location";
+import {useAppStore} from "../hooks/use-app-store";
+import {observer} from "mobx-react-lite";
 
-type AppResult = {
-  location: Location;
-  date: Date,
-  isDayOff: boolean,
-  weathercode?: number
-};
+export const AppData = observer(() => {
+  const store = useAppStore();
+  const appData = store.appData;
 
-type AppResultsProps = {
-  results: AppResult[]
-};
+  if (appData === undefined) return null;
 
-export function AppResults({results}: AppResultsProps) {
   return (
     <table className="table table-sm">
       <thead>
@@ -24,7 +19,7 @@ export function AppResults({results}: AppResultsProps) {
       </tr>
       </thead>
       <tbody>
-      {results.map(({location, date, isDayOff, weathercode}, index) => {
+      {appData.map(({location, date, isDayOff, weathercode}, index) => {
         return (
           <tr key={index}>
             <td>Lat: {location.lat.toFixed(2)}, Lon: {location.lon.toFixed(2)}</td>
@@ -37,4 +32,4 @@ export function AppResults({results}: AppResultsProps) {
       </tbody>
     </table>
   );
-}
+})

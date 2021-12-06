@@ -1,34 +1,17 @@
-import 'bootstrap/dist/css/bootstrap.min.css';
 import React from 'react';
-import {useDaysOff} from "./hooks/use-days-off";
-import {useWeatherForecast} from "./hooks/use-weather-forecast";
-import {compareDates} from "./utils/compare-dates";
+import 'bootstrap/dist/css/bootstrap.min.css';
 import {AppForm, AppFormFields} from "./components/app-form";
-import {AppResults} from "./components/app-results";
-import {eachDayOfInterval} from "date-fns";
-import {Location} from "./models/location";
+import {AppData} from "./components/app-data";
+import {useAppStore} from "./hooks/use-app-store";
 
 function App() {
-  const [dates, setDates] = React.useState<Date[]>();
-  const [markers, setMarkers] = React.useState<Location[]>();
-
-  const daysOff = useDaysOff(dates);
-  const weatherForecast = useWeatherForecast(markers);
+  const store = useAppStore();
 
   const handleSubmit = ({dateRange, markers}: AppFormFields) => {
-    setDates(eachDayOfInterval(dateRange));
-    setMarkers(markers);
+    store.setDateRange(dateRange);
+    store.setLocations(markers);
+    store.loadAppData(dateRange, markers);
   }
-
-
-  const results = (markers?.length && dates?.length && daysOff?.length && weatherForecast?.length) &&
-    markers.map((location, index) => {
-      const date = dates[index];
-      const isDayOff = daysOff[index];
-      const weathercode = weatherForecast.find(x => compareDates(x.date, date))?.weathercode;
-
-      return { location, date, isDayOff, weathercode};
-    });
 
   return (
     <div className="m-2">
@@ -36,11 +19,9 @@ function App() {
         <div className="col-4">
           <AppForm onSubmit={handleSubmit}/>
         </div>
-        {results && (
-          <div className="col">
-            <AppResults results={results}/>
-          </div>
-        )}
+        <div className="col">
+          <AppData/>
+        </div>
       </div>
     </div>
   );

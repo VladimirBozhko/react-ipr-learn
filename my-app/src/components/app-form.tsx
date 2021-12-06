@@ -6,6 +6,8 @@ import {getGeolocation} from "../utils/get-geolocation";
 import {eachDayOfInterval} from "date-fns";
 import {Location} from "../models/location";
 import {AppMapControl} from "./app-map-control";
+import {isDateRangeValid} from "../utils/validate-dates";
+import {useLocalStorage} from "../hooks/use-local-storage";
 
 export type AppFormFields = {
   dateRange: DateRange;
@@ -17,57 +19,62 @@ type AppFormProps = {
 }
 
 export function AppForm({onSubmit}: AppFormProps) {
-  const {handleSubmit, control, watch, resetField, formState: {errors}} = useForm<AppFormFields>();
+  const [appFormFields, setAppFormFields] = useLocalStorage<AppFormFields>('app-form-fields');
+  const {handleSubmit, control, watch, setValue, getValues, formState: {errors}} = useForm<AppFormFields>({
+    defaultValues: appFormFields
+  });
 
-  const [interval, setInterval] = React.useState<number>();
-  const [location, setLocation] = React.useState<Location>();
+  const [center, setCenter] = useLocalStorage<Location>('geolocation');
   const [geolocationError, setGeolocationError] = React.useState<any>();
 
-  const validateDateRange = React.useCallback((dateRange?: any) => {
-    return Boolean(dateRange?.start) && Boolean(dateRange?.end) &&
-      dateRange.start.getTime() <= dateRange.end.getTime();
-  }, []);
+  const [intervalLength, setIntervalLength] = React.useState<number>();
 
   React.useEffect(() => {
-    const subscription = watch(({dateRange}, {name, type}) => {
-      if (name === 'dateRange' && type === 'change') {
-        const start = dateRange?.start;
-        const end = dateRange?.end;
-
-        if (start && end && validateDateRange(dateRange)) {
-          const interval = eachDayOfInterval({start, end}).length;
-          setInterval(interval);
-
-          if (location) {
-            resetField('markers', {defaultValue: [location]});
-          } else {
-            getGeolocation()
-              .then(({coords: {latitude, longitude}}) => setLocation({lat: latitude, lon: longitude}))
-              .catch(error => setGeolocationError(error));
-          }
+    const subscription = watch(({dateRange}, {name}) => {
+      if (name === 'dateRange') {
+        if (isDateRangeValid(dateRange)) {
+          setIntervalLength(eachDayOfInterval(dateRange as DateRange).length);
         } else {
-          setInterval(undefined);
+          setIntervalLength(undefined);
         }
       }
     });
     return () => subscription.unsubscribe();
-  }, [watch, resetField,  validateDateRange, location])
+  }, [watch])
+
+  // reset dateRange to trigger watch
+  React.useEffect(() => {
+    if (appFormFields?.dateRange) {
+      setValue('dateRange', appFormFields.dateRange)
+    }
+  }, [appFormFields, setValue]);
+
+  // get geolocation if dates changed
+  React.useEffect(() => {
+    if (center) return;
+
+    if (intervalLength) {
+      getGeolocation()
+        .then(({coords: {latitude, longitude}}) => setCenter({lat: latitude, lon: longitude}))
+        .catch(error => setGeolocationError(error));
+    }
+  }, [center, setCenter, intervalLength]);
 
   return (
     <form className="m-2 " onSubmit={handleSubmit(onSubmit)}>
       {errors.dateRange && <div className="mb-2 alert-danger">Date range is invalid</div>}
       {geolocationError && <div className="col">Unable to determine user location</div>}
-      <Controller
-        control={control}
-        name={'dateRange'}
-        rules={{validate: validateDateRange}}
-        render={({field: {onChange}}) =>
-          <DateRangePicker onChange={onChange}/>}
+      <Controller control={control} name={'dateRange'} rules={{validate: isDateRangeValid}}
+                  render={({field: {onChange, value}}) => <DateRangePicker value={value} onChange={onChange}/>}
       />
-      {(location && interval) && (
-        <AppMapControl center={location} zoom={6} max={interval} name="markers" control={control}/>
+      {(center && intervalLength) && (
+        <AppMapControl center={center} zoom={6} markers={appFormFields?.markers || [center]} max={intervalLength} name="markers"
+                       control={control}/>
       )}
-      <input className="btn btn-primary mt-2" type="submit" value="Submit"/>
+      <div className="d-flex mt-2 justify-content-between">
+        <input className="btn btn-primary" type="submit" value="Submit"/>
+        <input className="btn btn-secondary" type="button" value="Save" onClick={() => setAppFormFields(getValues())}/>
+      </div>
     </form>
   );
 }
