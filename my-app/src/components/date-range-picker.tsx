@@ -26,8 +26,8 @@ export function DateRangePicker({value, onChange}: DateRangePickerProps) {
   };
 
   return (
-    <>
-      <div>
+    <div className="row">
+      <div className="col">
         <label>Start</label>
         <input
           className="form-control"
@@ -36,7 +36,7 @@ export function DateRangePicker({value, onChange}: DateRangePickerProps) {
           value={start ? formatDate(start) : ''}
         />
       </div>
-      <div>
+      <div className="col">
         <label>End</label>
         <input
           className="form-control"
@@ -45,6 +45,6 @@ export function DateRangePicker({value, onChange}: DateRangePickerProps) {
           value={end ? formatDate(end) : ''}
         />
       </div>
-    </>
+    </div>
   );
 }

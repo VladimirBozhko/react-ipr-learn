@@ -7,10 +7,10 @@ import {useAppStore} from "./hooks/use-app-store";
 function App() {
   const store = useAppStore();
 
-  const handleSubmit = ({dateRange, markers}: AppFormFields) => {
-    store.setDateRange(dateRange);
-    store.setLocations(markers);
-    store.loadAppData(dateRange, markers);
+  const handleSubmit = (appFormFields: AppFormFields) => {
+    store.appFormFields = appFormFields;
+    const {dateRange, markers, options} = appFormFields;
+    store.loadAppData(dateRange, markers, options);
   }
 
   return (
