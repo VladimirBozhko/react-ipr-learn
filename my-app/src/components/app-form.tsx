@@ -1,81 +1,90 @@
-import {Controller, useForm} from "react-hook-form";
 import React from "react";
+import {Controller, useForm} from "react-hook-form";
 import {DateRangePicker} from "./date-range-picker";
 import {DateRange} from "../models/date-range";
 import {getGeolocation} from "../utils/get-geolocation";
 import {eachDayOfInterval} from "date-fns";
-import {Location} from "../models/location";
 import {AppMapControl} from "./app-map-control";
 import {isDateRangeValid} from "../utils/validate-dates";
-import {useLocalStorage} from "../hooks/use-local-storage";
-import {OpenMeteoOptions} from "../models/open-meteo";
-
-export type AppFormFields = {
-  dateRange: DateRange;
-  markers: Location[];
-  options: OpenMeteoOptions;
-  startTitle?: string;
-  endTitle?: string;
-};
+import {TravelRoute} from "../models/travel-route";
+import {Location} from "../models/location";
 
 type AppFormProps = {
-  onSubmit: (model: AppFormFields) => void;
+  model?: Partial<TravelRoute>;
+  onSubmit: (model: TravelRoute) => void;
+  onBack: () => void;
 }
 
-export function AppForm({onSubmit}: AppFormProps) {
-  const [appFormFields, setAppFormFields] = useLocalStorage<AppFormFields>('app-form-fields');
-  const {register, handleSubmit, control, watch, setValue, getValues, formState: {errors}} = useForm<AppFormFields>({
-    defaultValues: appFormFields
+function getMax(dateRange?: DateRange) {
+  return isDateRangeValid(dateRange)
+    ? eachDayOfInterval(dateRange as DateRange).length
+    : undefined;
+}
+
+export function AppForm({model, onSubmit, onBack}: AppFormProps) {
+  const {register, handleSubmit, control, watch, setValue, reset, formState: {errors}} = useForm<TravelRoute>({
+    defaultValues: model
   });
 
-  const [center, setCenter] = useLocalStorage<Location>('geolocation');
+  const [center, setCenter] = React.useState<Location | undefined>(model?.userLocation);
   const [geolocationError, setGeolocationError] = React.useState<any>();
 
-  const initialLength = isDateRangeValid(appFormFields?.dateRange)
-    ? eachDayOfInterval(appFormFields.dateRange).length
-    : undefined;
+  const [max, setMax] = React.useState<number | undefined>(getMax(model?.dateRange));
 
-  const [intervalLength, setIntervalLength] = React.useState<number | undefined>(initialLength);
+  React.useEffect(() => {
+    reset(model);
+    setCenter(model?.userLocation);
+    setMax(getMax(model?.dateRange));
+    setGeolocationError(undefined);
+  }, [reset, model]);
 
   React.useEffect(() => {
     const subscription = watch(({dateRange}, {name, type}) => {
       if (name === 'dateRange' && type === 'change') {
         if (isDateRangeValid(dateRange)) {
-          setIntervalLength(eachDayOfInterval(dateRange as DateRange).length);
+          setMax(eachDayOfInterval(dateRange as DateRange).length);
         } else {
-          setIntervalLength(undefined);
+          setMax(undefined);
         }
 
-        setValue('markers', []);
+        if (center === undefined) {
+          getGeolocation()
+            .then(({coords: {latitude, longitude}}) => {
+              const center = {lat: latitude, lon: longitude};
+              setCenter(center);
+              setValue('userLocation', center);
+            })
+            .catch(error => setGeolocationError(error));
+        }
+
+        setValue('locations', []);
       }
     });
     return () => subscription.unsubscribe();
-  }, [watch, setValue])
+  }, [watch, setValue, center])
 
-  // get geolocation if dates changed
-  React.useEffect(() => {
-    if (center) return;
-
-    if (intervalLength) {
-      getGeolocation()
-        .then(({coords: {latitude, longitude}}) => setCenter({lat: latitude, lon: longitude}))
-        .catch(error => setGeolocationError(error));
-    }
-  }, [center, setCenter, intervalLength]);
+  const markers = model?.locations || [];
 
   return (
-    <form className="m-2 " onSubmit={handleSubmit(onSubmit)}>
+    <form className="m-2" onSubmit={handleSubmit(onSubmit)}>
       {errors.dateRange && <div className="mb-2 alert-danger">Date range is invalid</div>}
+      {errors.startTitle && <div className="mb-2 alert-danger">Start Title is required</div>}
+      {errors.endTitle && <div className="mb-2 alert-danger">End Title is required</div>}
       {geolocationError && <div>Unable to determine user location</div>}
+
       <Controller control={control} name={'dateRange'} rules={{validate: isDateRangeValid}}
                   render={({field: {onChange, value}}) => <DateRangePicker value={value} onChange={onChange}/>}
       />
       <div className="row my-2">
         <div className="col">
-          <input className="form-control" type="text" placeholder="Start Title" {...register('startTitle')} />
+          <input className="form-control" type="text" placeholder="Start Title"
+                 {...register('startTitle', {required: true})}
+          />
         </div>
         <div className="col">
-          <input className="form-control" type="text" placeholder="End Title"  {...register('endTitle')} />
+          <input className="form-control" type="text" placeholder="End Title"
+                 {...register('endTitle', {required: true})}
+          />
         </div>
       </div>
 
@@ -109,16 +118,12 @@ export function AppForm({onSubmit}: AppFormProps) {
         <label className="form-check-label">Wind Direction</label>
       </div>
 
-      {(center && intervalLength) && (
-        <AppMapControl center={center} zoom={6} markers={appFormFields?.markers || [center]} max={intervalLength}
-                       name="markers"
-                       control={control}/>
+      {(center && max) && (
+        <AppMapControl center={center} zoom={6} markers={markers} max={max} name="locations" control={control}/>
       )}
-
-
       <div className="d-flex mt-2 justify-content-between">
         <input className="btn btn-primary" type="submit" value="Submit"/>
-        <input className="btn btn-secondary" type="button" value="Save" onClick={() => setAppFormFields(getValues())}/>
+        <input className="btn btn-secondary" type="button" value="Back" onClick={onBack}/>
       </div>
     </form>
   );

@@ -11,6 +11,11 @@ export function DateRangePicker({value, onChange}: DateRangePickerProps) {
   const [start, setStart] = React.useState<Date | undefined>(value?.start);
   const [end, setEnd] = React.useState<Date | undefined>(value?.end);
 
+  React.useEffect(() => {
+    setStart(value?.start);
+    setEnd(value?.end)
+  }, [value]);
+
   const handleStartChange: ChangeEventHandler<HTMLInputElement> = (event) => {
     const start = new Date(event.target.value);
     setStart(start);

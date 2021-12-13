@@ -1,19 +1,20 @@
+import React from "react";
 import {AppMap} from "./app-map";
 import {useController} from "react-hook-form";
 import {UseControllerProps} from "react-hook-form/dist/types";
-import React from "react";
 import {Location} from "../models/location";
-import {AppFormFields} from "./app-form";
+import {TravelRoute} from "../models/travel-route";
 
 type AppMapControlProps = {
   center: Location;
   markers: Location[];
   zoom: number;
   max: number;
-} & UseControllerProps<AppFormFields, 'markers'>;
+} & UseControllerProps<TravelRoute, 'locations'>;
 
 export function AppMapControl({center, markers, zoom, max, control, name}: AppMapControlProps) {
   const {field: {onChange, value}} = useController({name, control, defaultValue: markers});
+
 
   const handleMarkersChange = (markers: Location[]) => {
     if (markers.length <= max) {

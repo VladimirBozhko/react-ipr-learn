@@ -1,30 +1,28 @@
-import React from 'react';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import {AppForm, AppFormFields} from "./components/app-form";
-import {AppData} from "./components/app-data";
-import {useAppStore} from "./hooks/use-app-store";
+import React from 'react';
+import {BrowserRouter as Router, Route, Routes} from "react-router-dom";
+import {AppEdit} from "./app-edit";
+import {observer} from "mobx-react-lite";
+import {AppNav} from "./components/app-nav";
 
-function App() {
-  const store = useAppStore();
-
-  const handleSubmit = (appFormFields: AppFormFields) => {
-    store.appFormFields = appFormFields;
-    const {dateRange, markers, options} = appFormFields;
-    store.loadAppData(dateRange, markers, options);
-  }
-
+const App = observer(() => {
   return (
-    <div className="m-2">
+    <Router>
       <div className="row">
-        <div className="col-4">
-          <AppForm onSubmit={handleSubmit}/>
+        <div className="col-2">
+          <AppNav/>
         </div>
-        <div className="col">
-          <AppData/>
+
+        <div className="col-10">
+          <Routes>
+            <Route path="/edit/:uuid" element={<AppEdit/>}/>
+            <Route path="/create" element={<AppEdit/>}/>
+          </Routes>
         </div>
+
       </div>
-    </div>
+    </Router>
   );
-}
+})
 
 export default App;

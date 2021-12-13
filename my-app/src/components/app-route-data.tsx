@@ -1,12 +1,12 @@
 import {formatDate} from "../utils/format-date";
-import {useAppStore} from "../hooks/use-app-store";
-import {observer} from "mobx-react-lite";
+import {TravelRouteData} from "../models/travel-route";
 
-export const AppData = observer(() => {
-  const store = useAppStore();
-  const appData = store.appData;
+type AppRouteDataProps = {
+  data: TravelRouteData[];
+}
 
-  if (appData === undefined) return null;
+export function AppRouteData({data}: AppRouteDataProps) {
+  if (!data?.length) return null;
 
   return (
     <table className="table table-sm">
@@ -25,7 +25,7 @@ export const AppData = observer(() => {
       </tr>
       </thead>
       <tbody>
-      {appData.map((data, index) => {
+      {data.map((data, index) => {
         return (
           <tr key={index}>
             <td>Lat: {data.location.lat.toFixed(2)}, Lon: {data.location.lon.toFixed(2)}</td>
@@ -44,4 +44,4 @@ export const AppData = observer(() => {
       </tbody>
     </table>
   );
-})
+}

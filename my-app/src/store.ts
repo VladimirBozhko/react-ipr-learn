@@ -1,24 +1,45 @@
-import {DateRange} from "./models/date-range";
 import {TransportLayer} from "./services/transport-layer";
-import {Location} from "./models/location";
 import {eachDayOfInterval} from "date-fns";
 import {formatDate} from "./utils/format-date";
 import {isDateRangeValid} from "./utils/validate-dates";
-import {AppData} from "./models/app-data";
 import {makeAutoObservable} from "mobx";
-import {OpenMeteoOptions} from "./models/open-meteo";
-import {AppFormFields} from "./components/app-form";
+import {TravelRoute, TravelRouteData} from "./models/travel-route";
+import {getFromLocalStorage, saveToLocalStorage} from "./utils/local-storage";
 
+const routesKey = 'app-routes';
 
 export class AppStore {
-  appFormFields?: AppFormFields;
-  appData?: AppData[];
+  routes: TravelRoute[] = [];
 
   constructor(private transportLayer: TransportLayer) {
     makeAutoObservable(this, {}, {autoBind: true});
+    this.restoreRoutes();
   }
 
-  loadAppData(dateRange: DateRange, locations: Location[], options: OpenMeteoOptions) {
+  getRoute(uuid: string) {
+    return this.routes.find(r => r.uuid === uuid);
+  }
+
+  addOrUpdateRoute(route: TravelRoute) {
+    if (this.routes === undefined) return;
+
+    const index = this.routes.findIndex(r => r.uuid === route.uuid);
+
+    if (index === -1)
+      this.routes.push(route);
+    else
+      this.routes.splice(index, 1, route);
+  }
+
+  deleteRoute(uuid: string) {
+    this.routes = this.routes.filter(r => r.uuid !== uuid);
+  }
+
+  loadData(uuid: string) {
+    const route = this.getRoute(uuid);
+    if (route === undefined) return;
+
+    const {dateRange, locations, options} = route;
     if (!isDateRangeValid(dateRange)) return;
 
     const dates = eachDayOfInterval(dateRange);
@@ -29,26 +50,37 @@ export class AppStore {
       const {daily} = await this.transportLayer.fetchWeatherForecast(location, options);
       const isDayOff = await this.transportLayer.fetchDayOff(date) === 1;
 
-      const appData: AppData = {date, location, isDayOff};
+      const data: TravelRouteData = {date, location, isDayOff};
 
       const timeIndex = daily.time.findIndex(t => t === formatDate(date));
       if (timeIndex !== -1) {
-        appData.weathercode = daily.weathercode[timeIndex];
-        appData.temperatureMin = daily.temperature_2m_min && daily.temperature_2m_min[timeIndex];
-        appData.temperatureMax = daily.temperature_2m_max && daily.temperature_2m_max[timeIndex];
-        appData.precipitationSum = daily.precipitation_sum && daily.precipitation_sum[timeIndex];
-        appData.precipitationHours = daily.precipitation_hours && daily.precipitation_hours[timeIndex];
-        appData.windSpeed = daily.windspeed_10m_max && daily.windspeed_10m_max[timeIndex];
-        appData.windDirection = daily.winddirection_10m_dominant && daily.winddirection_10m_dominant[timeIndex];
+        data.weathercode = daily.weathercode[timeIndex];
+        data.temperatureMin = daily.temperature_2m_min && daily.temperature_2m_min[timeIndex];
+        data.temperatureMax = daily.temperature_2m_max && daily.temperature_2m_max[timeIndex];
+        data.precipitationSum = daily.precipitation_sum && daily.precipitation_sum[timeIndex];
+        data.precipitationHours = daily.precipitation_hours && daily.precipitation_hours[timeIndex];
+        data.windSpeed = daily.windspeed_10m_max && daily.windspeed_10m_max[timeIndex];
+        data.windDirection = daily.winddirection_10m_dominant && daily.winddirection_10m_dominant[timeIndex];
       }
 
-      return appData;
+      return data;
     });
 
-    Promise.all(results).then(appData => this.setAppData(appData));
+    Promise.all(results).then(results => this.setData(uuid, results));
   }
 
-  private setAppData(appData: AppData[]) {
-    this.appData = appData;
+  private setData(uuid: string, data: TravelRouteData[]) {
+    const route = this.getRoute(uuid);
+    if (route === undefined) return;
+
+    route.data = data;
+  }
+
+  saveRoutes() {
+    saveToLocalStorage(routesKey, this.routes);
+  }
+
+  restoreRoutes() {
+    this.routes = getFromLocalStorage(routesKey) || [];
   }
 }

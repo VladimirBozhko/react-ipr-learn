@@ -63,7 +63,7 @@ export function AppMap({center, zoom, markers, onMarkersChange}: AppMapProps) {
   // draw markers
   React.useEffect(() => {
     vectorSource?.clear();
-    markers.forEach(({lon, lat}) => vectorSource?.addFeature(new ol.Feature(new Point(fromLonLat([lon, lat])))));
+    markers?.forEach(({lon, lat}) => vectorSource?.addFeature(new ol.Feature(new Point(fromLonLat([lon, lat])))));
   }, [markers, vectorSource]);
 
   return <div style={{height: '500px', padding: '25px'}} ref={mapRef}>Map</div>;
