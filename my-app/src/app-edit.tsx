@@ -11,16 +11,14 @@ export const AppEdit = observer(() => {
   const store = useAppStore();
   const navigate = useNavigate();
 
-  const back = () => navigate(-1);
-
   const {uuid} = useParams<'uuid'>();
 
   if (uuid && store.getRoute(uuid) === undefined) {
-    back();
+    navigate('/');
     return null;
   }
 
-  const model = uuid ? store.getRoute(uuid): {uuid: v4()} as Partial<TravelRoute>;
+  const model = uuid ? store.getRoute(uuid) : {uuid: v4()} as Partial<TravelRoute>;
 
   const handleSubmit = (route: TravelRoute) => {
     store.addOrUpdateRoute(route);
@@ -32,7 +30,7 @@ export const AppEdit = observer(() => {
     <div className="m-2">
       <div className="row">
         <div className="col-4">
-          <AppForm model={model} onSubmit={handleSubmit} onBack={back}/>
+          <AppForm model={model} onSubmit={handleSubmit} onBack={() => navigate('/')}/>
         </div>
         <div className="col">
           {model?.data && <AppRouteData data={model.data}/>}
